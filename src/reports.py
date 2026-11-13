@@ -62,10 +62,10 @@ def spending_by_category(transactions: pd.DataFrame, category: str, date: Option
     df["Дата операции"] = pd.to_datetime(df["Дата операции"], dayfirst=True)
 
     filtered_df = df[
-        (df["Категория"] == category) &
+        (df["Категория"].str.lower() == category.lower()) &
         (df["Дата операции"] >= start_date) &
         (df["Дата операции"] <= end_date)
-        ]
+    ]
     return filtered_df
 
 
@@ -83,7 +83,7 @@ def spending_by_weekday(transactions: pd.DataFrame, date: Optional[str] = None) 
     filtered_df = df[
         (df["Дата операции"] >= start_date) &
         (df["Дата операции"] <= end_date)
-        ].copy()
+    ].copy()
 
     filtered_df["День недели"] = filtered_df["Дата операции"].dt.day_name()
     result = filtered_df.groupby("День недели")["Сумма операции"].mean().reset_index()
@@ -106,7 +106,7 @@ def spending_by_workday(transactions: pd.DataFrame, date: Optional[str] = None) 
     filtered_df = df[
         (df["Дата операции"] >= start_date) &
         (df["Дата операции"] <= end_date)
-        ].copy()
+    ].copy()
 
     filtered_df["Тип дня"] = filtered_df["Дата операции"].dt.day_of_week.apply(
         lambda x: "Выходной" if x >= 5 else "Рабочий"
