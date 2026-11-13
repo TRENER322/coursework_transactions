@@ -19,37 +19,43 @@ def get_greeting(current_time: datetime) -> str:
         return "Доброй ночи"
 
 
-def get_card_info(transactions: pd.DataFrame) -> List[Dict[str, Any]]:
+def get_card_info(transactions: pd.DataFrame, current_date: datetime) -> List[Dict[str, Any]]:
     """Возвращает информацию по картам (траты и кешбэк)."""
-    # Берем только успешные операции
-    df = transactions[transactions["Статус"] == "OK"]
+    df = transactions[transactions["Статус"] == "OK"].copy()
+    df["Дата операции"] = pd.to_datetime(df["Дата операции"], dayfirst=True)
+
+    # ФИЛЬТР: с начала месяца по текущую дату
+    start_of_month = current_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    df = df[(df["Дата операции"] >= start_of_month) & (df["Дата операции"] <= current_date)]
 
     cards = []
     if "Номер карты" in df.columns:
-        grouped = df.groupby("Номер карты")
-        for card, group in grouped:
+        for card, group in df.groupby("Номер карты"):
             if pd.isna(card):
                 continue
 
-            # Сумма трат (по модулю, так как расходы с минусом)
             total_spent = abs(group[group["Сумма операции"] < 0]["Сумма операции"].sum())
-            cashback = group["Кэшбэк"].sum() if "Кэшбэк" in group else 0
+            # ФОРМУЛА: 1 рубль на каждые 100 рублей трат
+            cashback = round(total_spent / 100, 2)
 
             cards.append({
                 "last_digits": str(card)[-4:],
                 "total_spent": round(float(total_spent), 2),
-                "cashback": round(float(cashback), 2)
+                "cashback": cashback
             })
     return cards
 
 
-def get_top_transactions(transactions: pd.DataFrame) -> List[Dict[str, Any]]:
-    """Возвращает топ-5 транзакций по сумме платежа."""
+def get_top_transactions(transactions: pd.DataFrame, current_date: datetime) -> List[Dict[str, Any]]:
+    """Возвращает топ-5 транзакций по сумме платежа за текущий месяц."""
     df = transactions.copy()
-    # Переводим дату в нужный формат
-    df["Дата"] = pd.to_datetime(df["Дата операции"], dayfirst=True).dt.strftime("%d.%m.%Y")
+    df["Дата операции"] = pd.to_datetime(df["Дата операции"], dayfirst=True)
 
-    # Сортируем по сумме платежа (по убыванию)
+    # ФИЛЬТР: с начала месяца по текущую дату
+    start_of_month = current_date.replace(day=1, hour=0, minute=0, second=0, microsecond=0)
+    df = df[(df["Дата операции"] >= start_of_month) & (df["Дата операции"] <= current_date)]
+
+    df["Дата"] = df["Дата операции"].dt.strftime("%d.%m.%Y")
     top_df = df.sort_values(by="Сумма операции", ascending=False).head(5)
 
     result = []
@@ -121,8 +127,8 @@ def main_page(transactions: pd.DataFrame, settings: Dict[str, Any], date_str: Op
 
     data = {
         "greeting": get_greeting(current_date),
-        "cards": get_card_info(transactions),
-        "top_transactions": get_top_transactions(transactions),
+        "cards": get_card_info(transactions, current_date),  # добавили current_date
+        "top_transactions": get_top_transactions(transactions, current_date),  # добавили current_date
         "currency_rates": get_currency_rates(settings),
         "stock_prices": get_stock_prices(settings),
         "expenses": get_expenses_and_incomes(transactions, current_date)

@@ -1,17 +1,26 @@
+import json
+
 import pandas as pd
 
 
-def simple_search(transactions: pd.DataFrame, search_string: str) -> pd.DataFrame:
+def simple_search(transactions: pd.DataFrame, search_string: str) -> str:
     """
     Ищет транзакции по подстроке в описании или категории (без учета регистра).
+    Возвращает JSON-строку.
     """
     if transactions.empty or not search_string:
-        return pd.DataFrame()
+        return "[]"
 
-    # Ищем в колонках Описание и Категория
-    mask = (
-            transactions["Описание"].str.contains(search_string, case=False, na=False) |
-            transactions["Категория"].str.contains(search_string, case=False, na=False)
+    search_lower = search_string.lower()
+    records = transactions.to_dict(orient="records")
+
+    # Используем функциональное программирование (filter + lambda)
+    filtered_data = list(
+        filter(
+            lambda x: search_lower in str(x.get("Описание", "")).lower()
+            or search_lower in str(x.get("Категория", "")).lower(),
+            records,
+        )
     )
 
-    return transactions[mask]
+    return json.dumps(filtered_data, ensure_ascii=False, default=str)
