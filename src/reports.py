@@ -2,7 +2,7 @@ import functools
 import logging
 from datetime import datetime
 from pathlib import Path
-from typing import Optional, Callable, Any
+from typing import Any, Callable, Optional
 
 import pandas as pd
 
@@ -108,7 +108,7 @@ def spending_by_workday(transactions: pd.DataFrame, date: Optional[str] = None) 
         (df["Дата операции"] <= end_date)
         ].copy()
 
-    filtered_df["Тип дня"] = filtered_df["Дата операции"].dt.weekday.apply(
+    filtered_df["Тип дня"] = filtered_df["Дата операции"].dt.day_of_week.apply(
         lambda x: "Выходной" if x >= 5 else "Рабочий"
     )
 
